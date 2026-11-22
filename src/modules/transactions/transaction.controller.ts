@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   ApiOperation,
   ApiTags,
@@ -20,7 +29,6 @@ import {
   TransactionSubmissionDto,
   simulateTransactionSchema,
   SimulateTransactionInput,
-  parseIdempotencyKey,
 } from './transaction.dto';
 import { SpendingLimitGuard, RequireSpendingLimitCheck } from './guards/spending-limit.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -35,8 +43,8 @@ import { ApiCursorPaginatedEnvelope, ApiEnvelope } from '../../common/decorators
 import { ApiCursorPaginationQuery } from '../../common/decorators/api-cursor-pagination-query.decorator';
 import { cursorPaginationQuerySchema, CursorPaginationQuery } from '../../common/pagination/cursor-pagination';
 import { ApiErrorResponses } from '../../common/decorators/api-error-responses.decorator';
-import { IDEMPOTENCY_KEY_HEADER } from '../../common/constants/headers';
-import { TRANSACTION_CREATE_ROUTE } from '../../common/idempotency/idempotency.constants';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
 import {
   SlidingWindowThrottlerGuard,
   SlidingWindowLimit,
@@ -77,6 +85,8 @@ export class TransactionController {
   @RequireSpendingLimitCheck()
   @UseWalletLock()
   @UseTransactionLock({ attempts: 3, retryDelayMs: 50 })
+  @UseInterceptors(IdempotencyInterceptor)
+  @Idempotent()
   @AuditAction('TRANSFER_FUNDS')
   @ApiOperation({
     summary: 'Create a transaction (runs the full governance pipeline)',
@@ -108,16 +118,12 @@ export class TransactionController {
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createTransactionSchema)) body: CreateTransactionInput,
-    @Headers(IDEMPOTENCY_KEY_HEADER) rawIdempotencyKey?: string,
   ) {
     const actorId = user.isApiKey ? user.createdById ?? user.id : user.id;
-    const key = parseIdempotencyKey(rawIdempotencyKey);
-    return this.transactionService.create(
-      user.organizationId,
-      actorId,
-      body,
-      key ? { principalId: user.id, key, route: TRANSACTION_CREATE_ROUTE } : undefined,
-    );
+    // Idempotency is enforced at the HTTP boundary by IdempotencyInterceptor
+    // with the reusable IdempotencyService, so the service call stays focused on
+    // the governance pipeline.
+    return this.transactionService.create(user.organizationId, actorId, body);
   }
 
   @Post('simulate')
