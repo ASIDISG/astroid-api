@@ -187,6 +187,7 @@ describe('TransactionService', () => {
             spentThisMonth: 0,
           }),
           evaluateSpendingLimits: vi.fn().mockResolvedValue(undefined),
+          withSpendEnforcementLock: vi.fn(async (_agentId: string, fn: () => Promise<unknown>) => fn()),
         } as unknown as SpendingLimitService,
         passthroughTxService,
       );
@@ -358,6 +359,7 @@ describe('TransactionService - create', () => {
           useValue: {
             aggregateSpend: vi.fn().mockResolvedValue({ spentToday: 0, spentThisWeek: 0, spentThisMonth: 0 }),
             evaluateSpendingLimits: vi.fn().mockResolvedValue(undefined),
+            withSpendEnforcementLock: vi.fn(async (_agentId: string, fn: () => Promise<unknown>) => fn()),
           },
         },
       ],
@@ -462,6 +464,7 @@ describe('TransactionService - create', () => {
           useValue: {
             aggregateSpend: vi.fn().mockResolvedValue({ spentToday: 0, spentThisWeek: 0, spentThisMonth: 0 }),
             evaluateSpendingLimits: vi.fn().mockResolvedValue(undefined),
+            withSpendEnforcementLock: vi.fn(async (_agentId: string, fn: () => Promise<unknown>) => fn()),
           },
         },
       ],
@@ -633,6 +636,7 @@ describe('TransactionService - create', () => {
           useValue: {
             aggregateSpend: vi.fn().mockResolvedValue({ spentToday: 0, spentThisWeek: 0, spentThisMonth: 0 }),
             evaluateSpendingLimits: vi.fn().mockResolvedValue(undefined),
+            withSpendEnforcementLock: vi.fn(async (_agentId: string, fn: () => Promise<unknown>) => fn()),
           },
         },
       ],
